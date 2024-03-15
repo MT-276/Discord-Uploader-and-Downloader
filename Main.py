@@ -10,21 +10,21 @@
 # Testing  : Roshan Boby
 #-------------------------------------------------------------------------------
 Program_version = "1.6"
-mode = "Test"
+mode = "Stable"
 
 from Functions import *
 
-webhook_url = "https://discord.com/api/webhooks/1217386966065090590/ZHy6_elF8KG_n2jKWIPYOOhno3K16tvGEhoNlPCxSbRvB4dV6xlmgUwn0zVS27gI6qZl"
+#webhook_url = "https://discord.com/api/webhooks/1217386966065090590/ZHy6_elF8KG_n2jKWIPYOOhno3K16tvGEhoNlPCxSbRvB4dV6xlmgUwn0zVS27gI6qZl"
 
-thread_id = "1217741871082901536"
+#thread_id = "1217741871082901536"
 
 
 print(f'Discord Uploader and Downloader V{Program_version}')
 print('Developed by     : Meit Sant')
 print('Licence          : MIT')
 
-#webhook_url = input('\nEnter the webhook URL : ')
-#thread_id = input('Enter the thread ID : ')
+webhook_url = input('\nEnter the webhook URL : ')
+thread_id = input('Enter the thread ID : ')
 
 update_webhook(webhook_url,Program_version,mode)
 

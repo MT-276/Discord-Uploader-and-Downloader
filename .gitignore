@@ -1,6 +1,7 @@
 
 *.pdf
 *.txt
+/Tools
 /Zipped
 /Downloads
 /__pycache__
