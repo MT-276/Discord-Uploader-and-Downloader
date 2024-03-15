@@ -36,20 +36,21 @@ except ModuleNotFoundError:
 
 def send_message(webhook_url,thread_id,message):
     webhook = DiscordWebhook(url=webhook_url, thread_id=thread_id, content=message)
-    response = webhook.execute()
-    #print(f"Message sent to Discord: {message}")
+    webhook.execute()
 
 def send_file(webhook_url,thread_id,folder_path,file_name,file_dict):
-    print(f"Sending file {file_name} to Discord...")
+    print(f"Uploading file {file_name} to Discord...")
     
     webhook = DiscordWebhook(url=webhook_url, thread_id=thread_id)
     
     with open(f"{folder_path}/{file_name}", "rb") as f:
         # Get the size on disk of the file
         file_size = os.path.getsize(f"{folder_path}/{file_name}")
-        if file_size > 26109544:
+        
+        if file_size > 26203915:
             print(f"File {file_name} is too large to send [Over 25 MB]. Skipping...")
             return file_dict
+        
         webhook.add_file(file=f.read(), filename=file_name)
     
     webhook.execute()
@@ -58,7 +59,7 @@ def send_file(webhook_url,thread_id,folder_path,file_name,file_dict):
 
     file_dict[webhook_data['filename']] = webhook_data['url']
     
-    print(f"File {file_name} sent to Discord.\n")
+    print(f"Uploaded.")
     
     return file_dict
  
@@ -96,22 +97,31 @@ def upload_files(webhook_url,thread_id,folder_path):
     send_message(webhook_url,thread_id,f"Key for Downloading. Please Copy-Paste this key in the program to download the files.")
     send_message(webhook_url,thread_id,f"```{str_dict}```")
     
-def download_files(webhook_url,thread_id,string):
+def download_files(string):
     folder_path = "./Downloads/RAW/"
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
     
+    if not os.path.exists(folder_path):
+        pass
+    elif os.path.exists(f"{folder_path[:-1]}_1/"):
+        i = 2
+        while os.path.exists(f"{folder_path[:-1]}_{i}/"):
+            i += 1
+        folder_path = f"{folder_path[:-1]}_{i}/"
+    else:
+        folder_path = f"{folder_path[:-1]}_1/"
+    os.makedirs(folder_path)
     file_dict = eval(string)
     #print(file_dict)
     
-    new_file_dict = {}
-    
-    for i in file_dict:
-        if i == 'File_Name':
-            continue
-        new_file_dict[f"{file_dict['File_Name']}.zip.{i}"] = f"https://cdn.discordapp.com/attachments/{file_dict[i]}"
-    
-    file_dict = new_file_dict
+    if 'File_Name' in file_dict: 
+        new_file_dict = {}
+        
+        for i in file_dict:
+            if i == 'File_Name':
+                continue
+            new_file_dict[f"{file_dict['File_Name']}.zip.{i}"] = f"https://cdn.discordapp.com/attachments/{file_dict[i]}"
+        
+        file_dict = new_file_dict
     
     for num,i in enumerate(file_dict):
         url = file_dict[i]
@@ -120,8 +130,9 @@ def download_files(webhook_url,thread_id,string):
         if ".zip." in i:
             open(f"{folder_path}{i}", 'wb').write(r.content)
         else:
-            open(f"{folder_path[:-4]}{i}", 'wb').write(r.content)
+            open(f"./Downloads/{i}", 'wb').write(r.content)
         print(f"Downloaded.")
+    return folder_path
         
 def zip_and_split(file_path):
     
@@ -132,22 +143,39 @@ def zip_and_split(file_path):
         # Creating a new folder "Zipped" to store the zipped and split files
         folder_path = "./Zipped/"
         if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+            pass
+        elif os.path.exists(f"{folder_path[:-1]}_1/"):
+            i = 2
+            while os.path.exists(f"{folder_path[:-1]}_{i}/"):
+                i += 1
+            folder_path = f"{folder_path[:-1]}_{i}/"
+        else:
+            folder_path = f"{folder_path[:-1]}_1/"
+        os.makedirs(folder_path)
+        
         # Zip the folder
-        with ZipFile(f'{folder_path}/{folder_name}.zip', 'w') as zip_archive:
+        with ZipFile(f'{folder_path}{folder_name}.zip', 'w') as zip_archive:
             for foldername, subfolders, filenames in os.walk(file_path):
                 for filename in filenames:
                     # Create a complete filepath
                     file_path = os.path.join(foldername, filename)
                     # Add file to zip
                     zip_archive.write(file_path, os.path.relpath(file_path, file_path))
-        file_path = f"{folder_path}/{folder_name}.zip"
+        file_path = f"{folder_path}{folder_name}.zip"
         path_of_zip_file = file_path
     else:
         # Creating a new folder "Zipped" to store the zipped and split files
         folder_path = "./Zipped/"
         if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+            pass
+        elif os.path.exists(f"{folder_path[:-1]}_1/"):
+            i = 2
+            while os.path.exists(f"{folder_path[:-1]}_{i}/"):
+                i += 1
+            folder_path = f"{folder_path[:-1]}_{i}/"
+        else:
+            folder_path = f"{folder_path[:-1]}_1/"
+        os.makedirs(folder_path)
             
         filename = os.path.basename(file_path)
         # Open the archive in write mode
@@ -164,10 +192,10 @@ def zip_and_split(file_path):
         byte = f_in.read(1)
         chunk_count = 1
         while byte:
-            chunk_file_name = f"{folder_path}/{base_file_name}.{str(chunk_count).zfill(3)}"
+            chunk_file_name = f"{folder_path}{base_file_name}.{str(chunk_count).zfill(3)}"
             with open(chunk_file_name, "wb") as f_out:
                 f_out.write(byte)
-                Chunk = int(24.9 * 1024.0 * 1024.0) +1
+                Chunk = int(24.99 * 1024.0 * 1024.0) +1
                 #print(type(Chunk), f"{Chunk}")
                 for _ in range(Chunk - 1):  # -1 for the byte already read
                     byte = f_in.read(1)
@@ -177,6 +205,7 @@ def zip_and_split(file_path):
             byte = f_in.read(1)
 
     os.remove(path_of_zip_file)
+    return folder_path
 
 def Choose_File(Type):
     '''
@@ -240,7 +269,7 @@ def update_webhook(webhook_url,Version,mode):
     new_name = f"{mode}Database Bot V{Version}"
 
     headers = { "Content-Type": "application/json",}
-    data = {"name": new_name,"avatar": "https://media.discordapp.net/attachments/928947743555211284/1217815458150092850/2024-03-14_12-42-52_2771.png?ex=66056607&is=65f2f107&hm=c38a3a2379deebcf0445010b21ceb57102f75e3804eb15958b10e55d95db2c47&=&format=webp&quality=lossless&width=778&height=606"}
+    data = {"name": new_name,}
 
     response = requests.patch(webhook_url, headers=headers, data=json.dumps(data))
 
