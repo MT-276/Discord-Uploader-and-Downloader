@@ -12,8 +12,27 @@
 import os, sys
 import json, requests
 from zipfile import ZipFile, ZIP_DEFLATED
-from discord_webhook import DiscordWebhook
 from tkinter.filedialog import askopenfilename
+
+from logging import basicConfig, CRITICAL
+basicConfig(level=CRITICAL)
+
+# Trying to import discord-webhook
+try:
+    from discord_webhook import DiscordWebhook
+    
+except ModuleNotFoundError:
+    print("[ERROR] discord-webhook not found. Installing...\n")
+    
+    exit_code = os.system("pip install discord-webhook")
+    
+    if exit_code != 0:
+        print("\n[ERROR] Error Code : ",exit_code)
+        print("[ERROR] Could not install discord-webhook. Exiting...")
+        exit()
+    else:
+        print("\n[INFO] discord-webhook installed successfully.\n")
+        from discord_webhook import DiscordWebhook
 
 def send_message(webhook_url,thread_id,message):
     webhook = DiscordWebhook(url=webhook_url, thread_id=thread_id, content=message)
@@ -21,6 +40,7 @@ def send_message(webhook_url,thread_id,message):
     #print(f"Message sent to Discord: {message}")
 
 def send_file(webhook_url,thread_id,folder_path,file_name,file_dict):
+    print(f"Sending file {file_name} to Discord...")
     
     webhook = DiscordWebhook(url=webhook_url, thread_id=thread_id)
     
@@ -38,7 +58,7 @@ def send_file(webhook_url,thread_id,folder_path,file_name,file_dict):
 
     file_dict[webhook_data['filename']] = webhook_data['url']
     
-    print(f"File {file_name} sent to Discord.")
+    print(f"File {file_name} sent to Discord.\n")
     
     return file_dict
  
@@ -56,7 +76,7 @@ def upload_files(webhook_url,thread_id,folder_path):
     file_dict = eval(Str)
     New_dict = {}
     for i in file_dict:
-        New_dict['File_Name'] = i[:-8]
+        New_dict['File_Name'] = i[:-4]
         break
 
     for i in file_dict:
@@ -212,3 +232,21 @@ def zip_merge():
             print(f"[ERROR] Could not extract {base_file_name}.zip")
             sys.exit()
     
+def update_webhook(webhook_url,Version,mode):
+    if mode in ['Test', 'test','T','t']:
+        mode = '[Test] '
+    else:
+        mode = ''
+    new_name = f"{mode}Database Bot V{Version}"
+
+    headers = { "Content-Type": "application/json",}
+    data = {"name": new_name,"avatar": "https://media.discordapp.net/attachments/928947743555211284/1217815458150092850/2024-03-14_12-42-52_2771.png?ex=66056607&is=65f2f107&hm=c38a3a2379deebcf0445010b21ceb57102f75e3804eb15958b10e55d95db2c47&=&format=webp&quality=lossless&width=778&height=606"}
+
+    response = requests.patch(webhook_url, headers=headers, data=json.dumps(data))
+
+    if response.status_code != 200:
+        print(f"[ERROR] Could not update the webhook. Error Code: {response.status_code}")
+        sys.exit()
+    else:
+        return
+        

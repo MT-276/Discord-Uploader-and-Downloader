@@ -7,25 +7,29 @@
 # Created:     13 03 2024
 #
 # Lead Dev : Meit Sant
+# Testing  : Roshan Boby
 #-------------------------------------------------------------------------------
+Program_version = "1.5"
+mode = "Test"
 
-import os
-import sys
 from Functions import *
 
-webhook_url = "https://discord.com/api/webhooks/1217752661865267221/0l_VziYJg_M9NuPjryJ9nIKv9OJKmq5axN4Qu-gZxezpHeZg9laFCl65eaqmgMVd4eAT"
+webhook_url = "https://discord.com/api/webhooks/1217386966065090590/ZHy6_elF8KG_n2jKWIPYOOhno3K16tvGEhoNlPCxSbRvB4dV6xlmgUwn0zVS27gI6qZl"
 
-thread_id = "1218202729340469368"
+thread_id = "1218253959681015900"
 
 
-print('Discord Uploader and Downloader V1.4')
+print(f'Discord Uploader and Downloader V{Program_version}')
 print('Developed by     : Meit Sant')
 print('Licence          : MIT')
 
 #webhook_url = input('\nEnter the webhook URL : ')
 #thread_id = input('Enter the thread ID : ')
 
+update_webhook(webhook_url,Program_version,mode)
+
 option = input('\nUpload [U] or Download [D] : ')
+
 
 if option in ['U','u','Upload','upload']:
 
@@ -34,6 +38,7 @@ if option in ['U','u','Upload','upload']:
     if option in ['A','a','File','file']:
         file_path = input('\nEnter the file path : ')
 
+        # Checking if the entered string is empty.
         if file_path == "":
             print('\n[ERROR] Invalid file path. Exiting...')
             sys.exit()
@@ -44,8 +49,10 @@ if option in ['U','u','Upload','upload']:
         if not os.path.isfile(file_path):
             print(f"\n[ERROR] Could not find {file_path}. Exiting...")
             sys.exit()
+            
         print('\nZipping and splitting file...')
         zip_and_split(file_path)
+        
         print('Zipped.\n\nUploading files...\n')
         upload_files(webhook_url,thread_id,"./Zipped/")
 
@@ -119,7 +126,6 @@ if option in ['D','d','Download','download']:
     print('\nDownloading files...\n')
     download_files(webhook_url,thread_id,string)
 
-
     try:
         # Checks if the RAW folder is empty
         os.rmdir("./Downloads/RAW/")
@@ -134,5 +140,5 @@ if option in ['D','d','Download','download']:
             os.remove(f"./Downloads/RAW/{file}")
         os.rmdir("./Downloads/RAW/")
 else:
-    print('Invalid option. Exiting...')
+    print('\n[ERROR] Invalid option. Exiting...')
     sys.exit()
