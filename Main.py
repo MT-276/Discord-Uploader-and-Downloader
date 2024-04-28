@@ -1,37 +1,33 @@
 #-------------------------------------------------------------------------------
-# Name:        Main.py
-# Purpose:     Upload files to Discord
+# Name:             Main.py
+# Purpose:          Upload files to Discord
 #
-# Author:      Meit Sant
+# Author:           MS Productions
 #
-# Created:     13 03 2024
+# Created:          13 03 2024
+# License:          Apache License Version 2.0
 #
-# Lead Dev : Meit Sant
-# Testing  : Roshan Boby
+# Developed by:     Meit Sant [Github:MT_276]
 #-------------------------------------------------------------------------------
-Program_version = "1.6"
+
+Program_version = "1.7"
 mode = "Stable"
 
 from Functions import *
 
-#webhook_url = "https://discord.com/api/webhooks/1217386966065090590/ZHy6_elF8KG_n2jKWIPYOOhno3K16tvGEhoNlPCxSbRvB4dV6xlmgUwn0zVS27gI6qZl"
-
-#thread_id = "1217741871082901536"
-
-
 print(f'Discord Uploader and Downloader V{Program_version}')
 print('Developed by     : Meit Sant')
-print('Licence          : MIT')
-
-webhook_url = input('\nEnter the webhook URL : ')
-thread_id = input('Enter the thread ID : ')
-
-update_webhook(webhook_url,Program_version,mode)
+print('Licence          : Apache License Version 2.0')
 
 option = input('\nUpload [U] or Download [D] : ')
 
 
 if option in ['U','u','Upload','upload']:
+    
+    webhook_url = input('\nEnter the webhook URL : ')
+    thread_id = input('Enter the thread ID : ')
+
+    update_webhook(webhook_url,Program_version,mode)
 
     option = input('\nUpload a file [A] or a folder [B] : ')
 
@@ -49,10 +45,10 @@ if option in ['U','u','Upload','upload']:
         if not os.path.isfile(file_path):
             print(f"\n[ERROR] Could not find {file_path}. Exiting...")
             sys.exit()
-        
+
         # Checking size of file
         file_size = os.path.getsize(file_path)
-        
+
         # If file size is greater than 25 MB, zip and split the file
         if file_size > 26203915:
             # Getting base name of the file
@@ -65,14 +61,14 @@ if option in ['U','u','Upload','upload']:
             print(f'[INFO] The file will be zipped in chunks of {num} files.')
             if num > 10:
                 print(f'[INFO] This may take a while...')
-                
+
             folder_path = zip_and_split(file_path)
-            
+
             print('[INFO] Zipped.\n\n[INFO] Uploading files...\n')
-            
-            
+
+
             upload_files(webhook_url,thread_id,folder_path)
-            
+
             # Delete the zipped folder
             for i in os.listdir(folder_path):
                 os.remove(f"{folder_path}{i}")
@@ -112,10 +108,10 @@ if option in ['U','u','Upload','upload']:
                 print(f"{i+1}. ",end='')
                 file_dict = send_file(webhook_url,thread_id,folder_path,file,file_dict)
             send_message(webhook_url,thread_id,f"  **   **")
-            
+
             # Generating the Key string
             str_dict = str(file_dict)
-            
+
             if len(str_dict) > 1994:
                 # Write the key to a file
                 dir_name = os.path.basename(folder_path)
@@ -131,7 +127,7 @@ if option in ['U','u','Upload','upload']:
                 with open(f"Key_Folder-{dir_name}.txt", "w") as f:
                     f.write(str_dict)
                 send_message(webhook_url,thread_id,f"Key too large. Key was saved in uploader's pc.")
-                
+
             send_message(webhook_url,thread_id,f"Key for Downloading. Please Copy-Paste this key in the program to download the files.")
             send_message(webhook_url,thread_id,f"```{str_dict}```")
             print('\n[INFO] Files uploaded. Exiting...')
@@ -141,10 +137,10 @@ if option in ['U','u','Upload','upload']:
             print('\n[INFO] Zipping and splitting folder...')
             zip_and_split(folder_path)
             print('[INFO] Zipped.\n\n[INFO] Uploading files...\n')
-            
+
             # Checking if "./Zipped/" folder exists
             zipped_folder = "./Zipped"
-            
+
             if os.path.exists(zipped_folder):
                 if os.path.exists(f"{zipped_folder}_1"):
                     i = 2
@@ -206,6 +202,7 @@ if option in ['D','d','Download','download']:
         for file in os.listdir(folder_path):
             os.remove(f"./Downloads/RAW/{file}")
         os.rmdir(folder_path)
+
 else:
     print('\n[ERROR] Invalid option. Exiting...')
     sys.exit()

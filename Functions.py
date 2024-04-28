@@ -262,11 +262,11 @@ def zip_merge():
             sys.exit()
     
 def update_webhook(webhook_url,Version,mode):
-    if mode in ['Test', 'test','T','t']:
-        mode = '[Test] '
-    else:
-        mode = ''
-    new_name = f"{mode}Database Bot V{Version}"
+    '''
+    Update the name of the webhook
+    '''
+    
+    new_name = f"[{mode}] Database Bot V{Version}"
 
     headers = { "Content-Type": "application/json",}
     data = {"name": new_name,}
