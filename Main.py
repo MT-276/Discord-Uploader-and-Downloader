@@ -10,7 +10,7 @@
 # Developed by:     Meit Sant [Github:MT_276]
 #-------------------------------------------------------------------------------
 
-Program_version = "1.7"
+Program_version = "1.8"
 mode = "Stable"
 
 from Functions import *
@@ -26,7 +26,7 @@ if option in ['U','u','Upload','upload']:
     
     webhook_url = input('\nEnter the webhook URL : ')
     thread_id = input('Enter the thread ID : ')
-
+    
     update_webhook(webhook_url,Program_version,mode)
 
     option = input('\nUpload a file [A] or a folder [B] : ')
@@ -51,10 +51,14 @@ if option in ['U','u','Upload','upload']:
 
         # If file size is greater than 25 MB, zip and split the file
         if file_size > 26203915:
+            
             # Getting base name of the file
             file_name = os.path.basename(file_path)
+            
             print(f"\n[WARN] File {file_name} is too large to send independently [Over 25 MB].")
             print('\n[INFO] Zipping and splitting file...')
+            
+            # Calculating the number of files to be zipped
             num = file_size//26203915
             if file_size%26203915 != 0:
                 num += 1
@@ -66,7 +70,7 @@ if option in ['U','u','Upload','upload']:
 
             print('[INFO] Zipped.\n\n[INFO] Uploading files...\n')
 
-
+            # Uploading the files
             upload_files(webhook_url,thread_id,folder_path)
 
             # Delete the zipped folder
@@ -77,6 +81,8 @@ if option in ['U','u','Upload','upload']:
             print('\n[INFO] Files uploaded. Exiting...')
             sys.exit()
         else:
+            # If the file size is less than 25 MB, send the file directly
+            
             print('\n[INFO] Uploading file...\n')
             # Getting base name of the file
             file_name = os.path.basename(file_path)
@@ -85,10 +91,12 @@ if option in ['U','u','Upload','upload']:
             # Sending the file
             file_dict = send_file(webhook_url,thread_id,folder_path,file_name,{})
             # Sending the sharing link
-            send_message(webhook_url,thread_id,f"File `{file_name}` sharing link : {file_dict[file_name]}```{file_dict[file_name]}```")
+            send_message(webhook_url,thread_id,f"File - `{file_name}` sharing link : {file_dict[file_name]}```{file_dict[file_name]}```")
             sys.exit()
 
     if option in ['B','b','Folder','folder']:
+        
+        # Getting folder path
         folder_path = input('\nEnter the folder path : ')
         folder_path = folder_path.replace('"','')
 
@@ -97,68 +105,11 @@ if option in ['U','u','Upload','upload']:
             print(f"\n[ERROR] Could not find {folder_path}. Exiting...")
             sys.exit()
 
-        option = input('\nDo you want to upload \n- The contents of the folder [A] or \n- Folder as a zip [B] : ')
-
-        if option in ['A','a','Contents','contents']:
-            print('\n[INFO] Uploading files...\n')
-            list_files = os.listdir(folder_path)
-            list_files.sort()
-            file_dict = {}
-            for i,file in enumerate(list_files):
-                print(f"{i+1}. ",end='')
-                file_dict = send_file(webhook_url,thread_id,folder_path,file,file_dict)
-            send_message(webhook_url,thread_id,f"  **   **")
-
-            # Generating the Key string
-            str_dict = str(file_dict)
-
-            if len(str_dict) > 1994:
-                # Write the key to a file
-                dir_name = os.path.basename(folder_path)
-                # Checking if a key with same name exists
-                if os.path.isfile(f"Key_Folder-{dir_name}.txt"):
-                    if os.path.isfile(f"Key_Folder-{dir_name}_1.txt"):
-                        i = 2
-                        while os.path.isfile(f"Key_Folder-{dir_name}_{i}.txt"):
-                            i += 1
-                        dir_name = f"{dir_name}_{i}"
-                    else:
-                        dir_name = f"{dir_name}_1"
-                with open(f"Key_Folder-{dir_name}.txt", "w") as f:
-                    f.write(str_dict)
-                send_message(webhook_url,thread_id,f"Key too large. Key was saved in uploader's pc.")
-
-            send_message(webhook_url,thread_id,f"Key for Downloading. Please Copy-Paste this key in the program to download the files.")
-            send_message(webhook_url,thread_id,f"```{str_dict}```")
-            print('\n[INFO] Files uploaded. Exiting...')
-            sys.exit()
-
-        if option in ['B','b','Zip','zip']:
-            print('\n[INFO] Zipping and splitting folder...')
-            zip_and_split(folder_path)
-            print('[INFO] Zipped.\n\n[INFO] Uploading files...\n')
-
-            # Checking if "./Zipped/" folder exists
-            zipped_folder = "./Zipped"
-
-            if os.path.exists(zipped_folder):
-                if os.path.exists(f"{zipped_folder}_1"):
-                    i = 2
-                    while os.path.exists(f"{zipped_folder}_{i}"):
-                        i += 1
-                    zipped_folder = f"{zipped_folder}_{i}"
-                else:
-                    zipped_folder = f"{zipped_folder}_1"
-            upload_files(webhook_url,thread_id,f"{zipped_folder}/")
-
-            # Delete the zipped folder
-            for i in os.listdir(zipped_folder):
-                os.remove(f"{zipped_folder}/{i}")
-            os.rmdir(zipped_folder)
-
-            print('\n[INFO] Files uploaded. Exiting...')
-            sys.exit()
-
+        print('\n[INFO] Uploading files...\n')
+        
+        # Uploading the files
+        upload_files(webhook_url,thread_id,folder_path)
+        
     else:
         print('\n[ERROR] Invalid option. Exiting...')
         sys.exit()
@@ -196,7 +147,7 @@ if option in ['D','d','Download','download']:
     except:
         print("\n[INFO] Files downloaded. Merging files...")
         zip_merge()
-        print("\n[INFO] Files merged.\n[INFO] Original reconstructed successfully. Exiting...")
+        print("\n[INFO] Original reconstructed successfully. Exiting...")
 
         # Delete the RAW folder
         for file in os.listdir(folder_path):

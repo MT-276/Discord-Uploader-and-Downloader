@@ -9,18 +9,35 @@
 # Lead Dev : Meit Sant
 # Testing  : Roshan Boby
 #-------------------------------------------------------------------------------
-import os, sys
-import json, requests
-from zipfile import ZipFile, ZIP_DEFLATED
+
+# File version - 1.9
+
+import os, sys, json
+from zipfile import ZipFile, ZIP_DEFLATED, BadZipFile
 from tkinter.filedialog import askopenfilename
 
 from logging import basicConfig, CRITICAL
 basicConfig(level=CRITICAL)
 
+# Trying to import requests
+try:
+    import requests
+except ModuleNotFoundError:
+    print("[ERROR] requests not found. Installing...\n")
+    
+    exit_code = os.system("pip install requests")
+    
+    if exit_code != 0:
+        print("\n[ERROR] Error Code : ",exit_code)
+        print("[ERROR] Could not install requests. Exiting...")
+        exit()
+    else:
+        print("\n[INFO] requests installed successfully.\n")
+        import requests
+
 # Trying to import discord-webhook
 try:
-    from discord_webhook import DiscordWebhook
-    
+    from discord_webhook import DiscordWebhook  
 except ModuleNotFoundError:
     print("[ERROR] discord-webhook not found. Installing...\n")
     
@@ -64,38 +81,50 @@ def send_file(webhook_url,thread_id,folder_path,file_name,file_dict):
     return file_dict
  
 def upload_files(webhook_url,thread_id,folder_path):
+    '''
+    Uploads the files to Discord
+    '''
+    
     files = os.listdir(folder_path)
     files.sort()
+    
+    
+    # Checking if a key already exists
+    if os.path.exists(f"Key_{files[0][:-4]}.txt"):
+        print(f"[ERROR] A key already exists for {files[0][:-4]}.")
+        continue_upload = 'Y' #input("\nDo you want to continue uploading from last known file ? [Y/N] :")
+        if continue_upload in ['N','n','No','no']:
+            pass
+        if continue_upload in ['Y','y','Yes','yes']:
+            #Continue from here -----------------------------------
+            pass
+        else:
+            print("\n[ERROR] Invalid option. Exiting...")
+            sys.exit()
+    
+    print(files)
+    
+    sys.exit()
     
     file_dict = {}
     
     for file in files:
         file_dict = send_file(webhook_url,thread_id,folder_path,file,file_dict)
-    
-    # Generating the Key string
-    Str = json.dumps(file_dict)
-    file_dict = eval(Str)
-    New_dict = {}
-    for i in file_dict:
-        New_dict['File_Name'] = i[:-4]
-        break
-
-    for i in file_dict:
-        New_dict[i[-3:]] = file_dict[i][39:]
+        
+        # Encode the dictionary
+        files_dict = encode_Dict(file_dict)
+        
+        # Write the key to a file
+        with open(f"Key_{files_dict['File_Name']}.txt", "w") as f:
+            f.write(str(files_dict))
     
     send_message(webhook_url,thread_id,f"  **   **")
 
-    
-    str_dict = str(New_dict)
-    
-    if len(str_dict) > 2000:
-        # Write the key to a file
-        with open(f"Key_{New_dict['File_Name']}.txt", "w") as f:
-            f.write(str_dict)
+    if len(str(files_dict)) > 2000:
         send_message(webhook_url,thread_id,f"Key too large. Key was saved in uploader's pc.")
         return
     send_message(webhook_url,thread_id,f"Key for Downloading. Please Copy-Paste this key in the program to download the files.")
-    send_message(webhook_url,thread_id,f"```{str_dict}```")
+    send_message(webhook_url,thread_id,f"```{str(files_dict)}```")
     
 def download_files(string):
     folder_path = "./Downloads/RAW/"
@@ -114,14 +143,7 @@ def download_files(string):
     #print(file_dict)
     
     if 'File_Name' in file_dict: 
-        new_file_dict = {}
-        
-        for i in file_dict:
-            if i == 'File_Name':
-                continue
-            new_file_dict[f"{file_dict['File_Name']}.zip.{i}"] = f"https://cdn.discordapp.com/attachments/{file_dict[i]}"
-        
-        file_dict = new_file_dict
+        file_dict = decode_Dict(file_dict)
     
     for num,i in enumerate(file_dict):
         url = file_dict[i]
@@ -135,13 +157,18 @@ def download_files(string):
     return folder_path
         
 def zip_and_split(file_path):
+    '''
+    Zips the file and splits it into chunks of 25 MB
+    '''
     
     # If the path is of a folder, then zip the folder
     if os.path.isdir(file_path):
+        
         # Get the base folder name
         folder_name = os.path.basename(file_path)
         # Creating a new folder "Zipped" to store the zipped and split files
         folder_path = "./Zipped/"
+        
         if not os.path.exists(folder_path):
             pass
         elif os.path.exists(f"{folder_path[:-1]}_1/"):
@@ -163,9 +190,15 @@ def zip_and_split(file_path):
                     zip_archive.write(file_path, os.path.relpath(file_path, file_path))
         file_path = f"{folder_path}{folder_name}.zip"
         path_of_zip_file = file_path
+        
+        
     else:
+        # Else if the path if of a file.
+        
         # Creating a new folder "Zipped" to store the zipped and split files
         folder_path = "./Zipped/"
+        
+        # Check if the folder already exists so as to create a new folder in order to avoid overwriting.
         if not os.path.exists(folder_path):
             pass
         elif os.path.exists(f"{folder_path[:-1]}_1/"):
@@ -178,6 +211,7 @@ def zip_and_split(file_path):
         os.makedirs(folder_path)
             
         filename = os.path.basename(file_path)
+        
         # Open the archive in write mode
         with ZipFile(f'{folder_path}/{filename}.zip', 'w') as zip_archive:
             # Add only the file (not the parent directory)
@@ -240,27 +274,31 @@ def zip_merge():
             with open(f"{folder_path}{i}", "rb") as infile:
                 outfile.write(infile.read())
 
-    print(f"\nFile {base_file_name}.zip merged successfully.")
-    print(f"Unzipping {base_file_name}.zip...")
+    print(f"\n[INFO] File {base_file_name}.zip merged successfully.")
+    print(f"[INFO] Unzipping {base_file_name}.zip...")
     
-    with ZipFile(f"{folder_path[:-4]}{base_file_name}.zip", "r") as zip_ref:
-        try:
-            zip_ref.extractall(folder_path[:-4])
-            os.remove(f"{folder_path[:-4]}{base_file_name}.zip")
+    try:
+        # Unzip the file
+        with ZipFile(f"{folder_path[:-4]}{base_file_name}.zip", "r") as zip_ref:
+            try:
+                zip_ref.extractall(folder_path[:-4])
+                os.remove(f"{folder_path[:-4]}{base_file_name}.zip")
 
-        except IsADirectoryError:
-            # Checking if a folder with the same name as the base file name already exists
-            if os.path.exists(f"./{base_file_name}"):
-                print(f"[ERROR] A folder with the name {base_file_name} already exists.")
-                zip_ref.extractall(f"./{base_file_name}_New")
-            else:
-                zip_ref.extractall(f"./{base_file_name}")
+            except IsADirectoryError:
+                # Checking if a folder with the same name as the base file name already exists
+                if os.path.exists(f"./{base_file_name}"):
+                    print(f"[ERROR] A folder with the name {base_file_name} already exists.")
+                    zip_ref.extractall(f"./{base_file_name}_New")
+                else:
+                    zip_ref.extractall(f"./{base_file_name}")
             
+            except:
+                print(f"[ERROR] Could not extract {base_file_name}.zip")
+                sys.exit()
+    except BadZipFile:
+        print(f"\n[ERROR] {base_file_name}.zip is corrupted.")
+        sys.exit()
         
-        except:
-            print(f"[ERROR] Could not extract {base_file_name}.zip")
-            sys.exit()
-    
 def update_webhook(webhook_url,Version,mode):
     '''
     Update the name of the webhook
@@ -279,4 +317,31 @@ def update_webhook(webhook_url,Version,mode):
     else:
         return
         
+def encode_Dict(file_dict):
+    '''
+    Encoding the original dictionary into a dictrionary that is smaller in size.
+    '''
+    New_dict = {}
+    for i in file_dict:
+        New_dict['File_Name'] = i[:-4]
+        break
+
+    for i in file_dict:
+        New_dict[i[-3:]] = file_dict[i][39:]
+
+    return New_dict
+    
+def decode_Dict(file_dict):
+    '''
+    Decoding the dictionary to the original dictionary.
+    '''
+    new_file_dict = {}
+        
+    for i in file_dict:
+        if i == 'File_Name':
+            continue
+        new_file_dict[f"{file_dict['File_Name']}.zip.{i}"] = f"https://cdn.discordapp.com/attachments/{file_dict[i]}"
+    
+    return new_file_dict
+
 
