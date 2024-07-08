@@ -1,20 +1,18 @@
 #-------------------------------------------------------------------------------
-# Name:        Functions.py
-# Purpose:     Functions for Discord Uploader and Downloader
+# Name:             Functions.py
+# Purpose:          Functions for Discord Uploader and Downloader
 #
-# Author:      Meit Sant
+# Created:          13 03 2024
+# License:          Apache License Version 2.0
 #
-# Created:     13 03 2024
-#
-# Lead Dev : Meit Sant
-# Testing  : Roshan Boby
+# Developed by:     Meit Sant [Github:MT_276]
 #-------------------------------------------------------------------------------
 
 # File version - 1.9
 
 import os, sys, json
-from zipfile import ZipFile, ZIP_DEFLATED, BadZipFile
-from tkinter.filedialog import askopenfilename
+from zipfile import ZipFile, BadZipFile
+from tkinter.filedialog import askopenfilename,askdirectory
 
 from logging import basicConfig, CRITICAL
 basicConfig(level=CRITICAL)
@@ -72,7 +70,11 @@ def send_file(webhook_url,thread_id,folder_path,file_name,file_dict):
     
     webhook.execute()
     
-    webhook_data = webhook.json['attachments'][0]
+    try:
+        webhook_data = webhook.json['attachments'][0]
+    except IndexError:
+        print(f"\n[ERROR] Could not find thread with thread id : {thread_id}\n[ERROR] Please check the thread id and try again.")
+        sys.exit()
 
     file_dict[webhook_data['filename']] = webhook_data['url']
     
@@ -80,7 +82,7 @@ def send_file(webhook_url,thread_id,folder_path,file_name,file_dict):
     
     return file_dict
  
-def upload_files(webhook_url,thread_id,folder_path):
+def upload_files(webhook_url,thread_id,folder_path,Key=None):
     '''
     Uploads the files to Discord
     '''
@@ -88,35 +90,27 @@ def upload_files(webhook_url,thread_id,folder_path):
     files = os.listdir(folder_path)
     files.sort()
     
-    
-    # Checking if a key already exists
-    if os.path.exists(f"Key_{files[0][:-4]}.txt"):
-        print(f"[ERROR] A key already exists for {files[0][:-4]}.")
-        continue_upload = 'Y' #input("\nDo you want to continue uploading from last known file ? [Y/N] :")
-        if continue_upload in ['N','n','No','no']:
-            pass
-        if continue_upload in ['Y','y','Yes','yes']:
-            #Continue from here -----------------------------------
-            pass
-        else:
-            print("\n[ERROR] Invalid option. Exiting...")
-            sys.exit()
-    
-    print(files)
-    
-    sys.exit()
-    
-    file_dict = {}
-    
+    # Checking if the key already exists
+    if Key != None:
+        file_dict = decode_Dict(Key)
+        
+    else:
+        file_dict = {}
+
     for file in files:
         file_dict = send_file(webhook_url,thread_id,folder_path,file,file_dict)
         
         # Encode the dictionary
         files_dict = encode_Dict(file_dict)
         
+        
+        # If not present already, creating a folder "Keys" to store the keys
+        if not os.path.exists("Keys"):
+            os.makedirs("Keys")
+        
         # Write the key to a file
-        with open(f"Key_{files_dict['File_Name']}.txt", "w") as f:
-            f.write(str(files_dict))
+        with open(f"Keys\Key_{files_dict['File_Name']}.txt", "w") as f:
+                f.write(str(files_dict))
     
     send_message(webhook_url,thread_id,f"  **   **")
 
@@ -243,16 +237,19 @@ def zip_and_split(file_path):
 
 def Choose_File(Type):
     '''
-    Get the file path from user by opening an Explorer window
+    Get the file/folder path from user by opening an Explorer window
     '''
     try:
         # Open a Explorer window to choose a file
-        filename = askopenfilename()
+        if Type == 'file':
+            print(f"\n[INFO] Please choose the {Type} to upload : ")
+            filename = askopenfilename()
+        elif Type == 'folder':
+            print(f"\n[INFO] Please choose the {Type} to upload :")
+            filename = askdirectory()
     except :
         print("[ERROR] Could not open explorer window.")
-        filename = input("\nPlease enter the path of the image manually: ")
-    if filename == '':
-        return # If the user closes the window without choosing a file, then do nothing.
+        filename = input(f"\nPlease enter the path of the {Type} manually : ")
     return filename
 
 def zip_merge():
@@ -276,13 +273,12 @@ def zip_merge():
 
     print(f"\n[INFO] File {base_file_name}.zip merged successfully.")
     print(f"[INFO] Unzipping {base_file_name}.zip...")
-    
+
     try:
         # Unzip the file
         with ZipFile(f"{folder_path[:-4]}{base_file_name}.zip", "r") as zip_ref:
             try:
                 zip_ref.extractall(folder_path[:-4])
-                os.remove(f"{folder_path[:-4]}{base_file_name}.zip")
 
             except IsADirectoryError:
                 # Checking if a folder with the same name as the base file name already exists
@@ -292,9 +288,12 @@ def zip_merge():
                 else:
                     zip_ref.extractall(f"./{base_file_name}")
             
-            except:
+            except Exception as e:
                 print(f"[ERROR] Could not extract {base_file_name}.zip")
+                print(f"[ERROR] System : {e}")
                 sys.exit()
+        os.remove(f"{folder_path[:-4]}{base_file_name}.zip")
+                
     except BadZipFile:
         print(f"\n[ERROR] {base_file_name}.zip is corrupted.")
         sys.exit()
@@ -309,8 +308,11 @@ def update_webhook(webhook_url,Version,mode):
     headers = { "Content-Type": "application/json",}
     data = {"name": new_name,}
 
-    response = requests.patch(webhook_url, headers=headers, data=json.dumps(data))
-
+    try:
+        response = requests.patch(webhook_url, headers=headers, data=json.dumps(data))
+    except requests.exceptions.MissingSchema:
+        print(f"\n[ERROR] Invalid Webhook URL. Please try again.")
+    
     if response.status_code != 200:
         print(f"[ERROR] Could not update the webhook. Error Code: {response.status_code}")
         sys.exit()

@@ -2,46 +2,46 @@
 # Name:             Main.py
 # Purpose:          Upload files to Discord
 #
-# Author:           MS Productions
-#
 # Created:          13 03 2024
 # License:          Apache License Version 2.0
 #
 # Developed by:     Meit Sant [Github:MT_276]
 #-------------------------------------------------------------------------------
 
-Program_version = "1.8"
+Program_version = "1.9"
 mode = "Stable"
 
 from Functions import *
 
 print(f'Discord Uploader and Downloader V{Program_version}')
-print('Developed by     : Meit Sant')
+print('Developed by     :『 Meit Sant      |\n                   | Roshan Boby    |\n                   | Palash Kurkute 』')
 print('Licence          : Apache License Version 2.0')
 
-option = input('\nUpload [U] or Download [D] : ')
-
+option = input('\nUpload or Download [U/D] : ')
 
 if option in ['U','u','Upload','upload']:
-    
+
     webhook_url = input('\nEnter the webhook URL : ')
     thread_id = input('Enter the thread ID : ')
     
     update_webhook(webhook_url,Program_version,mode)
 
-    option = input('\nUpload a file [A] or a folder [B] : ')
+    option = input('\nUpload a file or a folder [A/B] : ')
 
     if option in ['A','a','File','file']:
-        file_path = input('\nEnter the file path : ')
+
+        file_path = Choose_File("file")
 
         # Checking if the entered string is empty.
-        if file_path == "":
+        if file_path in [""," ",None]:
             print('\n[ERROR] Invalid file path. Exiting...')
             sys.exit()
 
         file_path = file_path.replace('"','')
 
-        #Check if file exists
+        print(f"[INFO] Chosen file's path : {file_path}")
+
+        # Check if file exists
         if not os.path.isfile(file_path):
             print(f"\n[ERROR] Could not find {file_path}. Exiting...")
             sys.exit()
@@ -51,13 +51,13 @@ if option in ['U','u','Upload','upload']:
 
         # If file size is greater than 25 MB, zip and split the file
         if file_size > 26203915:
-            
+
             # Getting base name of the file
             file_name = os.path.basename(file_path)
-            
+
             print(f"\n[WARN] File {file_name} is too large to send independently [Over 25 MB].")
             print('\n[INFO] Zipping and splitting file...')
-            
+
             # Calculating the number of files to be zipped
             num = file_size//26203915
             if file_size%26203915 != 0:
@@ -66,12 +66,116 @@ if option in ['U','u','Upload','upload']:
             if num > 10:
                 print(f'[INFO] This may take a while...')
 
-            folder_path = zip_and_split(file_path)
+            # Checking if a key already exists
+            if os.path.exists(f"Keys/Key_{file_name}.txt"):
+                print(f"\n[INFO] A key already exists for {file_name}.")
 
-            print('[INFO] Zipped.\n\n[INFO] Uploading files...\n')
+                # Checking if there was a crash during the last upload
+                with open(f"Keys/Key_{file_name}.txt", "r") as f:
+                    key = eval(f.read())
 
-            # Uploading the files
-            upload_files(webhook_url,thread_id,folder_path)
+
+                if len(key) < num+1:
+                    print(f"[INFO] A crash was detected during the last upload.")
+                    continue_upload = input("\nDo you want to continue uploading from last known file ? [Y/N] : ")
+
+                    if continue_upload in ['N','n','No','no']:
+                        
+                        print('\n[INFO] Zipping and splitting file...')
+                        
+                        folder_path = zip_and_split(file_path)
+
+                        print('[INFO] Zipped.\n\n[INFO] Uploading files...\n')
+
+                        # Uploading the files
+                        upload_files(webhook_url,thread_id,folder_path)
+
+                    elif continue_upload in ['Y','y','Yes','yes']:
+
+                        # Getting all the names of the subfolders
+                        subfolders = []
+
+                        current_path = os.getcwd()
+                        for entry in os.listdir():
+                            full_path = os.path.join(current_path, entry)
+                            if os.path.isdir(full_path):
+                                subfolders.append(entry)
+
+                        # Scanning all the subfolders for the zipped files of the specific file
+                        for subfolder in subfolders:
+                            if "Zipped" in subfolder:
+                                files = os.listdir(f"{current_path}\\{subfolder}\\")
+                                if file_name in files[0]:
+                                    folder_path = f"{current_path}\\{subfolder}\\"
+                                    break
+
+                        try:
+                            files.sort()
+                        except NameError:
+                            print("\n[ERROR] The zip files are not present. Falling back to zipping the file again.")
+                            print('\n[INFO] Zipping and splitting file...')
+                            folder_path = zip_and_split(file_path)
+
+                            print('[INFO] Zipped.\n\n[INFO] Uploading files...\n')
+
+                            # Uploading the files
+                            upload_files(webhook_url,thread_id,folder_path)
+                            
+                            # Delete the zipped folder
+                            for i in os.listdir(folder_path):
+                                os.remove(f"{folder_path}{i}")
+                            os.rmdir(folder_path)
+
+                            print('\n[INFO] Files uploaded. Exiting...')
+                            sys.exit()
+                            
+                        item_lst = list(key.keys())
+
+                        for num,file in enumerate(files):
+                            file_num = file.split(".")[-1]
+                            try:
+                                if file_num == item_lst[num+1]:
+                                    # Create a folder if not present named "Restore" in Zipped
+                                    if not os.path.exists("Restore"):
+                                        os.mkdir("Restore")
+                                    # Move the file to the "Restore" folder
+                                    os.rename(f"{folder_path}/{file}",f"Restore/{file}")
+                                else:
+                                    pass
+                            except:
+                                pass
+                        files = os.listdir(folder_path)
+                        files.sort()
+                        print(f"\n[INFO] Continuing upload from file {files[0]}...\n")
+
+                        upload_files(webhook_url,thread_id,folder_path,Key=key)
+
+                        # Delete the "Restore" folder
+                        for i in os.listdir("Restore"):
+                            os.remove(f"Restore/{i}")
+                        os.rmdir("Restore")
+
+                        # Delete the zipped folder
+                        for i in os.listdir(folder_path):
+                            os.remove(f"{folder_path}{i}")
+                        os.rmdir(folder_path)
+                        
+                        # Delete the old Key
+                        os.remove(f"Keys/Key_{file_name}.txt")
+
+                        print('\n[INFO] Files uploaded. Exiting...')
+                        sys.exit()
+
+                    else:
+                        print("\n[ERROR] Invalid option. Exiting...")
+                        sys.exit()
+            else:
+                folder_path = zip_and_split(file_path)
+
+                print('[INFO] Zipped.\n\n[INFO] Uploading files...\n')
+
+                # Uploading the files
+                upload_files(webhook_url,thread_id,folder_path)
 
             # Delete the zipped folder
             for i in os.listdir(folder_path):
@@ -82,7 +186,7 @@ if option in ['U','u','Upload','upload']:
             sys.exit()
         else:
             # If the file size is less than 25 MB, send the file directly
-            
+
             print('\n[INFO] Uploading file...\n')
             # Getting base name of the file
             file_name = os.path.basename(file_path)
@@ -95,9 +199,10 @@ if option in ['U','u','Upload','upload']:
             sys.exit()
 
     if option in ['B','b','Folder','folder']:
-        
+
         # Getting folder path
-        folder_path = input('\nEnter the folder path : ')
+        folder_path = Choose_File("folder")
+
         folder_path = folder_path.replace('"','')
 
         #Check if folder exists
@@ -106,10 +211,10 @@ if option in ['U','u','Upload','upload']:
             sys.exit()
 
         print('\n[INFO] Uploading files...\n')
-        
+
         # Uploading the files
         upload_files(webhook_url,thread_id,folder_path)
-        
+
     else:
         print('\n[ERROR] Invalid option. Exiting...')
         sys.exit()
@@ -138,7 +243,7 @@ if option in ['D','d','Download','download']:
             sys.exit()
 
     print('\n[INFO] Downloading files...\n')
-    folder_path=download_files(string)
+    folder_path = download_files(string)
 
     try:
         # Checks if the RAW folder is empty
