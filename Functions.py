@@ -8,7 +8,7 @@
 # Developed by:     Meit Sant [Github:MT_276]
 #-------------------------------------------------------------------------------
 
-# File version - 1.9
+# File version - 2.0
 
 import os, sys, json
 from zipfile import ZipFile, BadZipFile
@@ -23,7 +23,7 @@ try:
 except ModuleNotFoundError:
     print("[ERROR] requests not found. Installing...\n")
     
-    exit_code = os.system("pip install requests")
+    exit_code = os.system("python -m pip install requests")
     
     if exit_code != 0:
         print("\n[ERROR] Error Code : ",exit_code)
@@ -39,7 +39,7 @@ try:
 except ModuleNotFoundError:
     print("[ERROR] discord-webhook not found. Installing...\n")
     
-    exit_code = os.system("pip install discord-webhook")
+    exit_code = os.system("python -m pip install discord-webhook")
     
     if exit_code != 0:
         print("\n[ERROR] Error Code : ",exit_code)
@@ -63,12 +63,20 @@ def send_file(webhook_url,thread_id,folder_path,file_name,file_dict):
         file_size = os.path.getsize(f"{folder_path}/{file_name}")
         
         if file_size > 26203915:
-            print(f"File {file_name} is too large to send [Over 25 MB]. Skipping...")
+            print(f"File {file_name} is too large to send [Over 25 MB]. Skipping...\n")
             return file_dict
         
         webhook.add_file(file=f.read(), filename=file_name)
     
-    webhook.execute()
+    try:
+        webhook.execute()
+    except requests.exceptions.SSLError:
+        print(f"\n[ERROR] Internet connection lost.\n[ERROR] Please check your internet connection and try again.")
+        print(f"[INFO] Your upload progress is saved and will resume once you select the same file for uploading.")
+        sys.exit()
+    except Exception as e:
+        print(f"\n[ERROR] {e}")
+        sys.exit()
     
     try:
         webhook_data = webhook.json['attachments'][0]
@@ -82,7 +90,7 @@ def send_file(webhook_url,thread_id,folder_path,file_name,file_dict):
     
     return file_dict
  
-def upload_files(webhook_url,thread_id,folder_path,Key=None):
+def upload_files(webhook_url,thread_id,folder_path,Anonymous_download=True,Key=None):
     '''
     Uploads the files to Discord
     '''
@@ -101,15 +109,17 @@ def upload_files(webhook_url,thread_id,folder_path,Key=None):
         file_dict = send_file(webhook_url,thread_id,folder_path,file,file_dict)
         
         # Encode the dictionary
-        files_dict = encode_Dict(file_dict)
-        
+        if not Anonymous_download:
+            files_dict = encode_Dict(file_dict,webhook_url,thread_id)
+        else:
+            files_dict = encode_Dict(file_dict)
         
         # If not present already, creating a folder "Keys" to store the keys
         if not os.path.exists("Keys"):
             os.makedirs("Keys")
         
         # Write the key to a file
-        with open(f"Keys\Key_{files_dict['File_Name']}.txt", "w") as f:
+        with open(f"Keys/Key_{files_dict['File_Name']}.txt", "w") as f:
                 f.write(str(files_dict))
     
     send_message(webhook_url,thread_id,f"  **   **")
@@ -123,34 +133,46 @@ def upload_files(webhook_url,thread_id,folder_path,Key=None):
 def download_files(string):
     folder_path = "./Downloads/RAW/"
     
-    if not os.path.exists(folder_path):
-        pass
-    elif os.path.exists(f"{folder_path[:-1]}_1/"):
-        i = 2
-        while os.path.exists(f"{folder_path[:-1]}_{i}/"):
-            i += 1
-        folder_path = f"{folder_path[:-1]}_{i}/"
-    else:
-        folder_path = f"{folder_path[:-1]}_1/"
+    # Changes the folder name if already exists
+    c = 0
+    while True:
+        # break loop if the folder does not exist
+        if not os.path.exists(folder_path):
+            break
+        c += 1
+        folder_path = f"./Downloads/RAW_{c}/"
+    
     os.makedirs(folder_path)
     file_dict = eval(string)
-    #print(file_dict)
     
-    if 'File_Name' in file_dict: 
-        file_dict = decode_Dict(file_dict)
+    file_dict = decode_Dict(file_dict)
     
-    for num,i in enumerate(file_dict):
-        url = file_dict[i]
-        print(f"{num+1}. Downloading {i}...")
+    for num,file_name in enumerate(file_dict):
+        
+        if file_name == 'Webhook_URL':
+            
+            # Finding the windows username
+            user = os.getlogin()
+            # Fetching file name
+            file_name = eval(string)['File_Name']
+            
+            message = f"# File : `{file_name}`\n# Downloaded by `{user}`"
+            send_message(file_dict['Webhook_URL'],file_dict['Thread_ID'],message)
+            break
+        
+        url = file_dict[file_name]
+        print(f"{num+1}. Downloading {file_name}")
+        
         r = requests.get(url, allow_redirects=True)
-        if ".zip." in i:
-            open(f"{folder_path}{i}", 'wb').write(r.content)
+        
+        if ".zip." in file_name:
+            open(f"{folder_path}{file_name}", 'wb').write(r.content)
         else:
-            open(f"./Downloads/{i}", 'wb').write(r.content)
+            open(f"./Downloads/{file_name}", 'wb').write(r.content)
         print(f"Downloaded.")
     return folder_path
         
-def zip_and_split(file_path):
+def zip_and_split(file_path,max_upload_size):
     '''
     Zips the file and splits it into chunks of 25 MB
     '''
@@ -160,18 +182,17 @@ def zip_and_split(file_path):
         
         # Get the base folder name
         folder_name = os.path.basename(file_path)
+        
         # Creating a new folder "Zipped" to store the zipped and split files
         folder_path = "./Zipped/"
-        
-        if not os.path.exists(folder_path):
-            pass
-        elif os.path.exists(f"{folder_path[:-1]}_1/"):
-            i = 2
-            while os.path.exists(f"{folder_path[:-1]}_{i}/"):
-                i += 1
-            folder_path = f"{folder_path[:-1]}_{i}/"
-        else:
-            folder_path = f"{folder_path[:-1]}_1/"
+        c = 0
+        while True:
+            # break loop if the folder does not exist
+            if not os.path.exists(folder_path):
+                break
+            c += 1
+            folder_path = f"./Zipped_{c}/"
+            
         os.makedirs(folder_path)
         
         # Zip the folder
@@ -193,15 +214,14 @@ def zip_and_split(file_path):
         folder_path = "./Zipped/"
         
         # Check if the folder already exists so as to create a new folder in order to avoid overwriting.
-        if not os.path.exists(folder_path):
-            pass
-        elif os.path.exists(f"{folder_path[:-1]}_1/"):
-            i = 2
-            while os.path.exists(f"{folder_path[:-1]}_{i}/"):
-                i += 1
-            folder_path = f"{folder_path[:-1]}_{i}/"
-        else:
-            folder_path = f"{folder_path[:-1]}_1/"
+        c = 0
+        while True:
+            # break loop if the folder does not exist
+            if not os.path.exists(folder_path):
+                break
+            c += 1
+            folder_path = f"./Zipped_{c}/"
+        
         os.makedirs(folder_path)
             
         filename = os.path.basename(file_path)
@@ -220,11 +240,11 @@ def zip_and_split(file_path):
         byte = f_in.read(1)
         chunk_count = 1
         while byte:
-            chunk_file_name = f"{folder_path}{base_file_name}.{str(chunk_count).zfill(3)}"
+            chunk_file_name = f"{folder_path}{base_file_name}.zip.{str(chunk_count).zfill(3)}"
             with open(chunk_file_name, "wb") as f_out:
                 f_out.write(byte)
-                Chunk = int(24.99 * 1024.0 * 1024.0) +1
-                #print(type(Chunk), f"{Chunk}")
+                Chunk = max_upload_size +1
+
                 for _ in range(Chunk - 1):  # -1 for the byte already read
                     byte = f_in.read(1)
                     if not byte: break
@@ -252,11 +272,10 @@ def Choose_File(Type):
         filename = input(f"\nPlease enter the path of the {Type} manually : ")
     return filename
 
-def zip_merge():
+def zip_merge(folder_path):
     '''
     Merge the split files and unzip them
     '''
-    folder_path = "./Downloads/RAW/"
     
     # Arrange files in ascended order
     file_names_list = os.listdir(folder_path)
@@ -271,12 +290,16 @@ def zip_merge():
             with open(f"{folder_path}{i}", "rb") as infile:
                 outfile.write(infile.read())
 
-    print(f"\n[INFO] File {base_file_name}.zip merged successfully.")
-    print(f"[INFO] Unzipping {base_file_name}.zip...")
+    if '.zip' in base_file_name :
+        extension = ''
+    else:
+        extension = '.zip'
+    print(f"\n[INFO] File {base_file_name}{extension} merged successfully.")
+    print(f"[INFO] Unzipping {base_file_name}{extension}...")
 
     try:
         # Unzip the file
-        with ZipFile(f"{folder_path[:-4]}{base_file_name}.zip", "r") as zip_ref:
+        with ZipFile(f"{folder_path[:-4]}{base_file_name}{extension}", "r") as zip_ref:
             try:
                 zip_ref.extractall(folder_path[:-4])
 
@@ -292,10 +315,13 @@ def zip_merge():
                 print(f"[ERROR] Could not extract {base_file_name}.zip")
                 print(f"[ERROR] System : {e}")
                 sys.exit()
-        os.remove(f"{folder_path[:-4]}{base_file_name}.zip")
+        os.remove(f"{folder_path[:-4]}{base_file_name}{extension}")
                 
     except BadZipFile:
-        print(f"\n[ERROR] {base_file_name}.zip is corrupted.")
+        print(f"\n[ERROR] {base_file_name}{extension} is corrupted.")
+        sys.exit()
+    except Exception as e:
+        print(f"\n[ERROR] An unknown error occured.\n[ERROR] {e}")
         sys.exit()
         
 def update_webhook(webhook_url,Version,mode):
@@ -312,6 +338,10 @@ def update_webhook(webhook_url,Version,mode):
         response = requests.patch(webhook_url, headers=headers, data=json.dumps(data))
     except requests.exceptions.MissingSchema:
         print(f"\n[ERROR] Invalid Webhook URL. Please try again.")
+        sys.exit()
+    except requests.exceptions.ConnectionError:
+        print(f'\n[ERROR] Could not connect to discord.com.\n[ERROR] Please check your internet connection.')
+        sys.exit()
     
     if response.status_code != 200:
         print(f"[ERROR] Could not update the webhook. Error Code: {response.status_code}")
@@ -319,7 +349,7 @@ def update_webhook(webhook_url,Version,mode):
     else:
         return
         
-def encode_Dict(file_dict):
+def encode_Dict(file_dict,webhook_url=None,thread_id=None):
     '''
     Encoding the original dictionary into a dictrionary that is smaller in size.
     '''
@@ -331,19 +361,37 @@ def encode_Dict(file_dict):
     for i in file_dict:
         New_dict[i[-3:]] = file_dict[i][39:]
 
+    if webhook_url != None:
+        New_dict['Webhook_URL'] = webhook_url
+        New_dict['Thread_ID'] = thread_id
+    
     return New_dict
     
 def decode_Dict(file_dict):
     '''
     Decoding the dictionary to the original dictionary.
     '''
-    new_file_dict = {}
-        
+    
+    newFileDict = {}
+    
+    # Iterate through each key in the input dictionary
     for i in file_dict:
+        # Skip processing if the current key is 'File_Name'
         if i == 'File_Name':
             continue
-        new_file_dict[f"{file_dict['File_Name']}.zip.{i}"] = f"https://cdn.discordapp.com/attachments/{file_dict[i]}"
+        # Directly copy 'Webhook_URL' key-value pair to the new dictionary
+        if i == 'Webhook_URL':
+            newFileDict[i] = file_dict[i]
+            continue
+        # Directly copy 'Thread_ID' key-value pair to the new dictionary
+        if i == 'Thread_ID':
+            newFileDict[i] = file_dict[i]
+            continue
+        # For other keys, generate a new key by appending the 'File_Name'
+        # value as a prefix, and create a URL using the value of the current key
+        newFileDict[f"{file_dict['File_Name']}.{i}"] = f"https://cdn.discordapp.com/attachments/{file_dict[i]}"
     
-    return new_file_dict
+    return newFileDict
+
 
 

@@ -8,14 +8,16 @@
 # Developed by:     Meit Sant [Github:MT_276]
 #-------------------------------------------------------------------------------
 
-Program_version = "1.9"
+Program_version = "2.0"
 mode = "Stable"
 
 from Functions import *
 
 print(f'Discord Uploader and Downloader V{Program_version}')
-print('Developed by     :『 Meit Sant      |\n                   | Roshan Boby    |\n                   | Palash Kurkute 』')
+print('Developed by     : Meit Sant [Github : MT_276]')
 print('Licence          : Apache License Version 2.0')
+
+max_upload_size = 25 # in MB
 
 option = input('\nUpload or Download [U/D] : ')
 
@@ -49,8 +51,19 @@ if option in ['U','u','Upload','upload']:
         # Checking size of file
         file_size = os.path.getsize(file_path)
 
-        # If file size is greater than 25 MB, zip and split the file
-        if file_size > 26203915:
+        # Anonymous download option
+        Anonymous_download = input("\nDo you want to enable anonymous download ? [Y/N] : ")
+        
+        if Anonymous_download in ['Y','y','Yes','yes']:
+            Anonymous_download = True
+        else:
+            Anonymous_download = False
+        
+        # Convert max upload size to decimal
+        max_upload_size = int((max_upload_size-0.001) * 1047576 + 1000)
+        
+        # If file size is greater than Max upload size, zip and split the file
+        if file_size > max_upload_size:
 
             # Getting base name of the file
             file_name = os.path.basename(file_path)
@@ -59,8 +72,8 @@ if option in ['U','u','Upload','upload']:
             print('\n[INFO] Zipping and splitting file...')
 
             # Calculating the number of files to be zipped
-            num = file_size//26203915
-            if file_size%26203915 != 0:
+            num = file_size//max_upload_size
+            if file_size%max_upload_size != 0:
                 num += 1
             print(f'[INFO] The file will be zipped in chunks of {num} files.')
             if num > 10:
@@ -73,7 +86,6 @@ if option in ['U','u','Upload','upload']:
                 # Checking if there was a crash during the last upload
                 with open(f"Keys/Key_{file_name}.txt", "r") as f:
                     key = eval(f.read())
-
 
                 if len(key) < num+1:
                     print(f"[INFO] A crash was detected during the last upload.")
@@ -88,7 +100,7 @@ if option in ['U','u','Upload','upload']:
                         print('[INFO] Zipped.\n\n[INFO] Uploading files...\n')
 
                         # Uploading the files
-                        upload_files(webhook_url,thread_id,folder_path)
+                        upload_files(webhook_url,thread_id,folder_path,Anonymous_download)
 
                     elif continue_upload in ['Y','y','Yes','yes']:
 
@@ -119,7 +131,7 @@ if option in ['U','u','Upload','upload']:
                             print('[INFO] Zipped.\n\n[INFO] Uploading files...\n')
 
                             # Uploading the files
-                            upload_files(webhook_url,thread_id,folder_path)
+                            upload_files(webhook_url,thread_id,folder_path,Anonymous_download)
                             
                             # Delete the zipped folder
                             for i in os.listdir(folder_path):
@@ -167,15 +179,22 @@ if option in ['U','u','Upload','upload']:
                         sys.exit()
 
                     else:
-                        print("\n[ERROR] Invalid option. Exiting...")
-                        sys.exit()
-            else:
-                folder_path = zip_and_split(file_path)
+                        print("[ERROR] Invalid option. Defaulting to NO.")
+                        print('\n[INFO] Zipping and splitting file...')
+                        
+                        folder_path = zip_and_split(file_path)
 
-                print('[INFO] Zipped.\n\n[INFO] Uploading files...\n')
+                        print('[INFO] Zipped.\n\n[INFO] Uploading files...\n')
 
-                # Uploading the files
-                upload_files(webhook_url,thread_id,folder_path)
+                        # Uploading the files
+                        upload_files(webhook_url,thread_id,folder_path,Anonymous_download)
+                        
+            folder_path = zip_and_split(file_path,max_upload_size)
+
+            print('[INFO] Zipped.\n\n[INFO] Uploading files...\n')
+
+            # Uploading the files
+            upload_files(webhook_url,thread_id,folder_path,Anonymous_download)
 
             # Delete the zipped folder
             for i in os.listdir(folder_path):
@@ -198,52 +217,63 @@ if option in ['U','u','Upload','upload']:
             send_message(webhook_url,thread_id,f"File - `{file_name}` sharing link : {file_dict[file_name]}```{file_dict[file_name]}```")
             sys.exit()
 
-    if option in ['B','b','Folder','folder']:
+    elif option in ['B','b','Folder','folder']:
 
         # Getting folder path
         folder_path = Choose_File("folder")
-
         folder_path = folder_path.replace('"','')
-
-        #Check if folder exists
+        
+        # Check if folder exists
         if not os.path.isdir(folder_path):
             print(f"\n[ERROR] Could not find {folder_path}. Exiting...")
             sys.exit()
+            
+        # Information about the folder
+        print(f"\n[INFO] Chosen folder's path : {folder_path}")
+        print(f"[INFO] Number of files in the folder : {len(os.listdir(folder_path))}")
+        
+        # Check if the uploader wants to enable or disable Anonymous download
+        Anonymous_download = input("\nDo you want to enable anonymous download ? [Y/N] : ")
+        if Anonymous_download in ['N','n','No','no']:
+            Anonymous_download = False
 
         print('\n[INFO] Uploading files...\n')
 
         # Uploading the files
-        upload_files(webhook_url,thread_id,folder_path)
+        upload_files(webhook_url,thread_id,folder_path,Anonymous_download)
+        
+        # All files uploaded message
+        print('\n[INFO] Files have been uploaded. Exiting...')
 
     else:
         print('\n[ERROR] Invalid option. Exiting...')
         sys.exit()
 
-if option in ['D','d','Download','download']:
-    string = input('\nEnter the key or or directly the path of the file containing the Key \n->')
+elif option in ['D','d','Download','download']:
+    key = input('\nEnter the key or or directly the path of the file containing the Key \n->')
 
     # Checking if the entered string is empty.
-    if string == "":
-        print('\n[ERROR] Invalid key. Exiting...')
+    if key == "":
+        print('\n[ERROR] Exiting Program...')
         sys.exit()
 
     # Checking if the entered string is a path to the file containing the key.
-    if string[0] != "{":
-        string = string.replace('"','')
-        if os.path.isfile(string):
+    if key[0] != "{":
+        key = key.replace('"','')
+        if os.path.isfile(key):
             # Checking if the file is a txt.
-            if string[-4:] != ".txt":
+            if key[-4:] != ".txt":
                 print('\n[ERROR] Invalid file. It needs to be a .txt file. Exiting...')
                 sys.exit()
 
-            with open(string, "r") as f:
-                string = f.read()
+            with open(key, "r") as f:
+                key = f.read()
         else:
             print('\n[ERROR] Could not find the file. Exiting...')
             sys.exit()
 
     print('\n[INFO] Downloading files...\n')
-    folder_path = download_files(string)
+    folder_path = download_files(key)
 
     try:
         # Checks if the RAW folder is empty
@@ -251,12 +281,12 @@ if option in ['D','d','Download','download']:
         print("\n[INFO] Files downloaded. Exiting...")
     except:
         print("\n[INFO] Files downloaded. Merging files...")
-        zip_merge()
+        zip_merge(folder_path)
         print("\n[INFO] Original reconstructed successfully. Exiting...")
 
         # Delete the RAW folder
         for file in os.listdir(folder_path):
-            os.remove(f"./Downloads/RAW/{file}")
+            os.remove(f"{folder_path}{file}")
         os.rmdir(folder_path)
 
 else:
