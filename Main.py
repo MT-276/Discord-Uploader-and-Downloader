@@ -8,27 +8,29 @@
 # Developed by:     Meit Sant [Github:MT_276]
 #-------------------------------------------------------------------------------
 
-Program_version = "2.0"
-mode = "Stable"
+programVersion = "2.1"
+mode = "Test"
 
 from Functions import *
 
-print(f'Discord Uploader and Downloader V{Program_version}')
+print(f'Discord Uploader and Downloader V{programVersion}')
 print('Developed by     : Meit Sant [Github : MT_276]')
 print('Licence          : Apache License Version 2.0')
 
-max_upload_size = 25 # in MB
+max_upload_size = 10 # in MB
 
-option = input('\nUpload or Download [U/D] : ')
+
+
+option = input('\nChoose an option [U/D] : \n[U] Upload \n[D] Download\n-> ')
 
 if option in ['U','u','Upload','upload']:
 
     webhook_url = input('\nEnter the webhook URL : ')
     thread_id = input('Enter the thread ID : ')
     
-    update_webhook(webhook_url,Program_version,mode)
+    update_webhook(webhook_url,programVersion,mode)
 
-    option = input('\nUpload a file or a folder [A/B] : ')
+    option = input('\nWhat do you want to upload [A/B] : \n[A] File \n[B] Folder \n-> ')
 
     if option in ['A','a','File','file']:
 
@@ -36,7 +38,7 @@ if option in ['U','u','Upload','upload']:
 
         # Checking if the entered string is empty.
         if file_path in [""," ",None]:
-            print('\n[ERROR] Invalid file path. Exiting...')
+            print('\n[ERROR] Invalid file path. ')
             sys.exit()
 
         file_path = file_path.replace('"','')
@@ -45,14 +47,14 @@ if option in ['U','u','Upload','upload']:
 
         # Check if file exists
         if not os.path.isfile(file_path):
-            print(f"\n[ERROR] Could not find {file_path}. Exiting...")
+            print(f"\n[ERROR] Could not find {file_path}. ")
             sys.exit()
 
         # Checking size of file
         file_size = os.path.getsize(file_path)
 
         # Anonymous download option
-        Anonymous_download = input("\nDo you want to enable anonymous download ? [Y/N] : ")
+        Anonymous_download = input("\nDo you want to enable anonymous download ? [Y/N] : \n[Y] NO log message will be sent to the channel. \n[N] Log message will be sent to the channel.\n-> ")
         
         if Anonymous_download in ['Y','y','Yes','yes']:
             Anonymous_download = True
@@ -60,7 +62,7 @@ if option in ['U','u','Upload','upload']:
             Anonymous_download = False
         
         # Convert max upload size to decimal
-        max_upload_size = int((max_upload_size-0.001) * 1047576 + 1000)
+        max_upload_size = int((max_upload_size-0.001) * 1047576 + 1000) # Very complicated mafs
         
         # If file size is greater than Max upload size, zip and split the file
         if file_size > max_upload_size:
@@ -89,7 +91,7 @@ if option in ['U','u','Upload','upload']:
 
                 if len(key) < num+1:
                     print(f"[INFO] A crash was detected during the last upload.")
-                    continue_upload = input("\nDo you want to continue uploading from last known file ? [Y/N] : ")
+                    continue_upload = input("\nDo you want to continue uploading from last known file ? [Y/N] : \n[Y] Yes \n[N] No\n-> ")
 
                     if continue_upload in ['N','n','No','no']:
                         
@@ -138,7 +140,7 @@ if option in ['U','u','Upload','upload']:
                                 os.remove(f"{folder_path}{i}")
                             os.rmdir(folder_path)
 
-                            print('\n[INFO] Files uploaded. Exiting...')
+                            print('\n[INFO] Files uploaded. ')
                             sys.exit()
                             
                         item_lst = list(key.keys())
@@ -175,7 +177,7 @@ if option in ['U','u','Upload','upload']:
                         # Delete the old Key
                         os.remove(f"Keys/Key_{file_name}.txt")
 
-                        print('\n[INFO] Files uploaded. Exiting...')
+                        print('\n[INFO] Files uploaded. ')
                         sys.exit()
 
                     else:
@@ -201,7 +203,7 @@ if option in ['U','u','Upload','upload']:
                 os.remove(f"{folder_path}{i}")
             os.rmdir(folder_path)
 
-            print('\n[INFO] Files uploaded. Exiting...')
+            print('\n[INFO] Files uploaded. ')
             sys.exit()
         else:
             # If the file size is less than 25 MB, send the file directly
@@ -225,7 +227,7 @@ if option in ['U','u','Upload','upload']:
         
         # Check if folder exists
         if not os.path.isdir(folder_path):
-            print(f"\n[ERROR] Could not find {folder_path}. Exiting...")
+            print(f"\n[ERROR] Could not find {folder_path}. ")
             sys.exit()
             
         # Information about the folder
@@ -233,7 +235,7 @@ if option in ['U','u','Upload','upload']:
         print(f"[INFO] Number of files in the folder : {len(os.listdir(folder_path))}")
         
         # Check if the uploader wants to enable or disable Anonymous download
-        Anonymous_download = input("\nDo you want to enable anonymous download ? [Y/N] : ")
+        Anonymous_download = input("\nDo you want to enable anonymous download ? [Y/N] : \n[Y] NO log message will be sent to the channel. \n[N] Log message will be sent to the channel.\n-> ")
         if Anonymous_download in ['N','n','No','no']:
             Anonymous_download = False
 
@@ -243,33 +245,49 @@ if option in ['U','u','Upload','upload']:
         upload_files(webhook_url,thread_id,folder_path,Anonymous_download)
         
         # All files uploaded message
-        print('\n[INFO] Files have been uploaded. Exiting...')
+        print('\n[INFO] Files have been uploaded. ')
 
     else:
-        print('\n[ERROR] Invalid option. Exiting...')
+        print('\n[ERROR] Invalid option. ')
         sys.exit()
 
 elif option in ['D','d','Download','download']:
-    key = input('\nEnter the key or or directly the path of the file containing the Key \n->')
+    # Option if the user has the file containing the key or the key itself.
+    opening_key = input('\nWhat is the format of the key ? [A/B] \n[A] Key itself \n[B] File containing the key \n-> ')
 
+    if opening_key in ['A','a','Key','key']:
+        # If the user has the key itself.
+        key = input('\nEnter the key \n->')
+        key = key.replace('"','')
+
+    elif opening_key in ['B','b','File','file']:
+        # If the user has the file containing the key.
+        key = Choose_File("file")
+        if key == "":
+            print('\n[ERROR] Operation cancelled.\n')
+            sys.exit()
+        print(f'[INFO] Chosen file\'s path : {key}')
+    else:
+        print('\n[ERROR] Invalid option.\n')
+        sys.exit()
+    
     # Checking if the entered string is empty.
     if key == "":
-        print('\n[ERROR] Exiting Program...')
+        # If the user did not enter anything.
+        print('\n[ERROR] No key entered.')
         sys.exit()
-
-    # Checking if the entered string is a path to the file containing the key.
-    if key[0] != "{":
-        key = key.replace('"','')
+    
+    if key[0] != '{':
         if os.path.isfile(key):
             # Checking if the file is a txt.
             if key[-4:] != ".txt":
-                print('\n[ERROR] Invalid file. It needs to be a .txt file. Exiting...')
+                print('\n[ERROR] Invalid file. It needs to be a .txt file. ')
                 sys.exit()
 
             with open(key, "r") as f:
                 key = f.read()
         else:
-            print('\n[ERROR] Could not find the file. Exiting...')
+            print('\n[ERROR] Could not find the file. ')
             sys.exit()
 
     print('\n[INFO] Downloading files...\n')
@@ -278,11 +296,11 @@ elif option in ['D','d','Download','download']:
     try:
         # Checks if the RAW folder is empty
         os.rmdir(folder_path)
-        print("\n[INFO] Files downloaded. Exiting...")
+        print("\n[INFO] Files downloaded. ")
     except:
         print("\n[INFO] Files downloaded. Merging files...")
         zip_merge(folder_path)
-        print("\n[INFO] Original reconstructed successfully. Exiting...")
+        print("\n[INFO] Original reconstructed successfully.")
 
         # Delete the RAW folder
         for file in os.listdir(folder_path):
@@ -290,5 +308,5 @@ elif option in ['D','d','Download','download']:
         os.rmdir(folder_path)
 
 else:
-    print('\n[ERROR] Invalid option. Exiting...')
+    print('\n[ERROR] Invalid option. ')
     sys.exit()

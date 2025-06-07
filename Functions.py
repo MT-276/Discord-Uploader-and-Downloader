@@ -80,8 +80,10 @@ def send_file(webhook_url,thread_id,folder_path,file_name,file_dict):
     
     try:
         webhook_data = webhook.json['attachments'][0]
-    except IndexError:
-        print(f"\n[ERROR] Could not find thread with thread id : {thread_id}\n[ERROR] Please check the thread id and try again.")
+    except Exception as e:
+        print(f"\n[ERROR] {e}")
+        print(f"\n[ERROR] Could not upload file {file_name}.\n[ERROR] Please check the file and try again.")
+        #print(f"\n[ERROR] Could not find thread with thread id : {thread_id}\n[ERROR] Please check the thread id and try again.")
         sys.exit()
 
     file_dict[webhook_data['filename']] = webhook_data['url']
@@ -261,11 +263,10 @@ def Choose_File(Type):
     '''
     try:
         # Open a Explorer window to choose a file
+        print(f"\n[INFO] Please choose the {Type} : ")
         if Type == 'file':
-            print(f"\n[INFO] Please choose the {Type} to upload : ")
             filename = askopenfilename()
         elif Type == 'folder':
-            print(f"\n[INFO] Please choose the {Type} to upload :")
             filename = askdirectory()
     except :
         print("[ERROR] Could not open explorer window.")

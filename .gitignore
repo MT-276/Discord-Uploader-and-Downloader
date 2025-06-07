@@ -6,3 +6,5 @@
 /Downloads
 /__pycache__
 /Restore
+
+.pylintrc
