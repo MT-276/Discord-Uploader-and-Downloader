@@ -1,4 +1,4 @@
-# <img src="Lorem Ipsum" width="500" alt="DUAD Logo">
+# <img src="https://raw.githubusercontent.com/MT-276/Discord-Uploader-and-Downloader/refs/heads/main/Assets/Program-Logo.png" width="500" alt="DUAD Logo">
 
 ## Overview
 
